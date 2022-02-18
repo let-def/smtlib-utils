@@ -56,34 +56,34 @@
 %token LEFT_PAREN "("
 %token RIGHT_PAREN ")"
 
-%token PAR
+%token PAR "par"
 %token ARROW "=>"
 
-%token DISTINCT
+%token DISTINCT "distinct"
 %token EQ "="
-%token IF
-%token MATCH
-%token FUN
-%token LET
-%token AS
+%token IF "ite"
+%token MATCH "match"
+%token FUN "lambda"
+%token LET "let"
+%token AS "as"
 %token WILDCARD "_"
-%token IS
+%token IS "is"
 %token AT "@"
 %token BANG "!"
 
-%token DATA
-%token ASSERT
-%token FORALL
-%token EXISTS
-%token DECLARE_SORT
-%token DECLARE_CONST
-%token DECLARE_FUN
-%token DEFINE_FUN
-%token DEFINE_FUN_REC
-%token DEFINE_FUNS_REC
-%token CHECK_SAT
-%token CHECK_SAT_ASSUMING
-%token GET_VALUE
+%token DATA "declare-datatypes"
+%token ASSERT "assert"
+%token FORALL "forall"
+%token EXISTS "exists"
+%token DECLARE_SORT "declare-sort"
+%token DECLARE_CONST "declare-const"
+%token DECLARE_FUN "declare-fun"
+%token DEFINE_FUN "define-fun"
+%token DEFINE_FUN_REC "define-fun-rec"
+%token DEFINE_FUNS_REC "define-funs-rec"
+%token CHECK_SAT "check-sat"
+%token CHECK_SAT_ASSUMING "check-sat-assuming"
+%token GET_VALUE "get-value"
 
 %token <string>IDENT
 %token <string>QUOTED
@@ -108,7 +108,7 @@ cstor_dec:
 
 cstor:
   | dec=cstor_dec { let c,l = dec in Ast.mk_cstor ~vars:[] c l }
-  | "(" PAR "(" vars=var+ ")" dec=cstor_dec ")"
+  | "(" "par" "(" vars=var+ ")" dec=cstor_dec ")"
     { let c,l = dec in Ast.mk_cstor ~vars c l }
 
 cstors:
@@ -139,7 +139,7 @@ fun_decl_mono:
 
 fun_decl:
   | tup=fun_decl_mono { let f, args, ret = tup in [], f, args, ret }
-  | "(" PAR
+  | "(" "par"
       "(" tyvars=tyvar* ")"
       "(" tup=fun_decl_mono ")"
     ")"
@@ -151,7 +151,7 @@ fun_rec:
       let f, args, ret = tup in
       Ast.mk_fun_rec ~ty_vars:[] f args ret body
     }
-  | "(" PAR
+  | "(" "par"
       "(" l=tyvar* ")"
       "(" tup=fun_def_mono body=term ")"
     ")"
@@ -166,7 +166,7 @@ funs_rec_decl:
       let f, args, ret = tup in
       Ast.mk_fun_decl ~ty_vars:[] f args ret
     }
-  | "(" PAR
+  | "(" "par"
       "(" l=tyvar* ")"
       "(" tup=fun_def_mono ")"
     ")"
@@ -176,7 +176,7 @@ funs_rec_decl:
     }
 
 par_term:
-  | "(" PAR "(" tyvars=tyvar+ ")" t=term ")"
+  | "(" "par" "(" tyvars=tyvar+ ")" t=term ")"
   { tyvars, t }
   | t=term
   { [], t }
@@ -195,18 +195,18 @@ prop_lit:
     }
 
 stmt:
-  | "(" ASSERT t=term ")"
+  | "(" "assert" t=term ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.assert_ ~loc t
     }
-  | "(" DECLARE_SORT td=ty_decl ")"
+  | "(" "declare-sort" td=ty_decl ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       let s, n = td in
       Ast.decl_sort ~loc s ~arity:n
     }
-  | "(" DATA
+  | "(" "declare-datatypes"
       "(" tys=ty_decl_paren+ ")"
       "(" l=cstors+ ")"
     ")"
@@ -214,28 +214,28 @@ stmt:
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.data_zip ~loc tys l
     }
-  | "(" DECLARE_FUN tup=fun_decl ")"
+  | "(" "declare-fun" tup=fun_decl ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       let tyvars, f, args, ret = tup in
       Ast.decl_fun ~loc ~tyvars f args ret
     }
-  | "(" DECLARE_CONST f=IDENT ty=ty ")"
+  | "(" "declare-const" f=IDENT ty=ty ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.decl_fun ~loc ~tyvars:[] f [] ty
     }
-  | "(" DEFINE_FUN f=fun_rec ")"
+  | "(" "define-fun" f=fun_rec ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.fun_def ~loc f
     }
-  | "(" DEFINE_FUN_REC f=fun_rec ")"
+  | "(" "define-fun-rec" f=fun_rec ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.fun_rec ~loc f
     }
-  | "(" DEFINE_FUNS_REC
+  | "(" "define-funs-rec"
       "(" decls=funs_rec_decl+ ")"
       "(" bodies=term+ ")"
     ")"
@@ -243,17 +243,17 @@ stmt:
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.funs_rec ~loc decls bodies
     }
-  | "(" CHECK_SAT ")"
+  | "(" "check-sat" ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.check_sat ~loc ()
     }
-  | "(" CHECK_SAT_ASSUMING "(" l=prop_lit* ")" ")"
+  | "(" "check-sat-assuming" "(" l=prop_lit* ")" ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.check_sat_assuming ~loc l
     }
-  | "(" GET_VALUE l=term+ ")"
+  | "(" "get-value" l=term+ ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.get_value ~loc l
@@ -348,8 +348,8 @@ attr:
 
 composite_term:
   | "(" t=term ")" { t }
-  | "(" IF a=term b=term c=term ")" { Ast.if_ a b c }
-  | "(" DISTINCT l=term+ ")" { Ast.distinct l }
+  | "(" "ite" a=term b=term c=term ")" { Ast.if_ a b c }
+  | "(" "distinct" l=term+ ")" { Ast.distinct l }
   | "(" "=" a=term b=term ")" { Ast.eq a b }
   | "(" "=>" a=term b=term ")" { Ast.imply a b }
   | "(" f=IDENT args=term+ ")" {
@@ -358,19 +358,19 @@ composite_term:
   | "(" f=composite_term args=term+ ")" { Ast.ho_app_l f args }
   | "(" "@" f=term arg=term ")" { Ast.ho_app f arg }
   | "(" "!" t=term attrs=attr+ ")" { Ast.attr t attrs }
-  | "(" MATCH lhs=term "(" l=case+ ")" ")"
+  | "(" "match" lhs=term "(" l=case+ ")" ")"
     { Ast.match_ lhs l }
-  | "(" FUN "(" vars=typed_var+ ")" body=term ")"
+  | "(" "lambda" "(" vars=typed_var+ ")" body=term ")"
     { Ast.fun_l vars body }
-  | "(" "(" "_" IS c=IDENT ")" t=term ")"
+  | "(" "(" "_" "is" c=IDENT ")" t=term ")"
     { Ast.is_a c t }
-  | "(" LET "(" l=binding+ ")" r=term ")"
+  | "(" "let" "(" l=binding+ ")" r=term ")"
     { Ast.let_ l r }
-  | "(" AS t=term ty=ty ")"
+  | "(" "as" t=term ty=ty ")"
     { Ast.cast t ~ty }
-  | "(" FORALL "(" vars=typed_var+ ")" f=term ")"
+  | "(" "forall" "(" vars=typed_var+ ")" f=term ")"
     { Ast.forall vars f }
-  | "(" EXISTS "(" vars=typed_var+ ")" f=term ")"
+  | "(" "exists" "(" vars=typed_var+ ")" f=term ")"
     { Ast.exists vars f }
 
 %%
