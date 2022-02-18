@@ -276,6 +276,8 @@ stmt:
       | "get-unsat-assumptions", [] -> Ast.get_unsat_assumptions ~loc ()
       | "reset", [] -> Ast.reset ~loc ()
       | "reset-assertions", [] -> Ast.reset_assertions ~loc ()
+      | "push", [] -> Ast.push ~loc 1
+      | "pop", [] -> Ast.pop ~loc 1
       | "push", [x] ->
         (try Ast.push ~loc (int_of_string x) with _ ->
          Ast.parse_errorf ~loc "expected an integer argument for push, not %s" x)
@@ -333,12 +335,11 @@ binding:
 term:
   | s=QUOTED { Ast.const s }
   | s=IDENT {
-    let loc = Loc.mk_pos $startpos $endpos in
-    apply_const ~loc s []
+      let loc = Loc.mk_pos $startpos $endpos in
+      apply_const ~loc s []
     }
   | t=composite_term { t }
-  | error
-    {
+  | error {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.parse_errorf ~loc "expected term"
     }
@@ -353,8 +354,11 @@ composite_term:
   | "(" "=" a=term b=term ")" { Ast.eq a b }
   | "(" "=>" a=term b=term ")" { Ast.imply a b }
   | "(" f=IDENT args=term+ ")" {
-    let loc = Loc.mk_pos $startpos $endpos in
-    apply_const ~loc f args }
+      let loc = Loc.mk_pos $startpos $endpos in
+      apply_const ~loc f args
+    }
+  | "(" "(" "_" f1=IDENT f2=IDENT ")" args=term+ ")"
+    { Ast.app2 f1 f2 args }
   | "(" f=composite_term args=term+ ")" { Ast.ho_app_l f args }
   | "(" "@" f=term arg=term ")" { Ast.ho_app f arg }
   | "(" "!" t=term attrs=attr+ ")" { Ast.attr t attrs }
@@ -364,6 +368,8 @@ composite_term:
     { Ast.fun_l vars body }
   | "(" "(" "_" "is" c=IDENT ")" t=term ")"
     { Ast.is_a c t }
+  | "(" "(" "_" "is" "(" h=IDENT "(" args=IDENT* ")" ty=IDENT ")" ")" t=term ")"
+    { Ast.is_a2 h args ty t }
   | "(" "let" "(" l=binding+ ")" r=term ")"
     { Ast.let_ l r }
   | "(" "as" t=term ty=ty ")"

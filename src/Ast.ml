@@ -33,11 +33,13 @@ type term =
   | Const of string
   | Arith of arith_op * term list
   | App of string * term list
+  | App2 of string * string * term list
   | HO_app of term * term (* higher-order application *)
   | Match of term * match_branch list
   | If of term * term * term
   | Let of (var * term) list * term
   | Is_a of string * term (* tester: is-constructor(term) *)
+  | Is_a2 of string * string list * string * term (* tester: is-constructor(term) *)
   | Fun of typed_var * term
   | Eq of term * term
   | Imply of term * term
@@ -141,6 +143,7 @@ let true_ = True
 let false_ = False
 let const s = Const s
 let app f l = App (f,l)
+let app2 f1 f2 l = App2 (f1,f2,l)
 let ho_app a b = HO_app (a,b)
 let ho_app_l a l = List.fold_left ho_app a l
 let match_ u l = Match (u,l)
@@ -151,6 +154,7 @@ let let_ l t = Let (l,t)
 let eq a b = Eq (a,b)
 let imply a b = Imply(a,b)
 let is_a c t = Is_a (c,t)
+let is_a2 h args ty t = Is_a2 (h,args,ty,t)
 let and_ l = And l
 let or_ l = Or l
 let distinct l = Distinct l
@@ -282,6 +286,8 @@ let rec pp_term lvl out (t:term) =
     Format.fprintf out "(@[<hv>%a@ %a@])" pp_arith op (pp_list self_a) l
   | Const s -> pp_str out s
   | App (f,l) -> fpf' lvl_app out "%s@ %a" f (pp_list self_a) l
+  | App2 (f1,f2,l) ->
+    fpf' lvl_app out "(_@ %s@ %s)@ %a" f1 f2 (pp_list self_a) l
   | HO_app (a,b) -> fpf' lvl_app out "@@@ %a@ %a" (self' lvl_app) a (self' lvl_app) b
   | Match (lhs,cases) ->
     let pp_case out = function
@@ -301,6 +307,8 @@ let rec pp_term lvl out (t:term) =
   | Let (l,t) ->
     fpf' lvl_let out "let@ (@[%a@])@ %a" (pp_list pp_binding) l (self' lvl_let) t
   | Is_a (c,t) -> fpf out "(@[(@[_ is@ %s@])@ %a@])" c self t
+  | Is_a2 (h,args,ty,t) ->
+    fpf out "(@[(@[_ is@ (@[%s(@[<hv>%a@])@ %s@])@])@ %a@])" h (pp_list pp_str) args ty self t
   | Eq (a,b) -> fpf out "(@[=@ %a@ %a@])" self a self b
   | Imply (a,b) ->
     fpf' lvl_or out "=>@ %a@ %a" (self' lvl_or) a (self' lvl_or) b
