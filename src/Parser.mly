@@ -53,23 +53,23 @@
 
 %token EOI
 
-%token LEFT_PAREN
-%token RIGHT_PAREN
+%token LEFT_PAREN "("
+%token RIGHT_PAREN ")"
 
 %token PAR
-%token ARROW
+%token ARROW "=>"
 
 %token DISTINCT
-%token EQ
+%token EQ "="
 %token IF
 %token MATCH
 %token FUN
 %token LET
 %token AS
-%token WILDCARD
+%token WILDCARD "_"
 %token IS
-%token AT
-%token BANG
+%token AT "@"
+%token BANG "!"
 
 %token DATA
 %token ASSERT
@@ -101,18 +101,18 @@ parse_term: t=term EOI { t }
 parse_ty: t=ty EOI { t }
 
 cstor_arg:
-  | LEFT_PAREN name=IDENT ty=ty RIGHT_PAREN { name, ty }
+  | "(" name=IDENT ty=ty ")" { name, ty }
 
 cstor_dec:
-  | LEFT_PAREN c=IDENT l=cstor_arg* RIGHT_PAREN { c, l }
+  | "(" c=IDENT l=cstor_arg* ")" { c, l }
 
 cstor:
   | dec=cstor_dec { let c,l = dec in Ast.mk_cstor ~vars:[] c l }
-  | LEFT_PAREN PAR LEFT_PAREN vars=var+ RIGHT_PAREN dec=cstor_dec RIGHT_PAREN
+  | "(" PAR "(" vars=var+ ")" dec=cstor_dec ")"
     { let c,l = dec in Ast.mk_cstor ~vars c l }
 
 cstors:
-  | LEFT_PAREN l=cstor+ RIGHT_PAREN { l }
+  | "(" l=cstor+ ")" { l }
 
 %inline ty_decl:
   | s=IDENT n=IDENT  {
@@ -125,27 +125,24 @@ cstors:
   }
 
 ty_decl_paren:
-  | LEFT_PAREN ty=ty_decl RIGHT_PAREN { ty }
+  | "(" ty=ty_decl ")" { ty }
 
 fun_def_mono:
-  | f=IDENT
-    LEFT_PAREN args=typed_var* RIGHT_PAREN
+  | f=IDENT "(" args=typed_var* ")"
     ret=ty
     { f, args, ret }
 
 fun_decl_mono:
-  | f=IDENT
-    LEFT_PAREN args=ty* RIGHT_PAREN
+  | f=IDENT "(" args=ty* ")"
     ret=ty
     { f, args, ret }
 
 fun_decl:
   | tup=fun_decl_mono { let f, args, ret = tup in [], f, args, ret }
-  | LEFT_PAREN
-      PAR
-      LEFT_PAREN tyvars=tyvar* RIGHT_PAREN
-      LEFT_PAREN tup=fun_decl_mono RIGHT_PAREN
-    RIGHT_PAREN
+  | "(" PAR
+      "(" tyvars=tyvar* ")"
+      "(" tup=fun_decl_mono ")"
+    ")"
     { let f, args, ret = tup in tyvars, f, args, ret }
 
 fun_rec:
@@ -154,36 +151,32 @@ fun_rec:
       let f, args, ret = tup in
       Ast.mk_fun_rec ~ty_vars:[] f args ret body
     }
-  | LEFT_PAREN
-      PAR
-      LEFT_PAREN l=tyvar* RIGHT_PAREN
-      LEFT_PAREN tup=fun_def_mono body=term RIGHT_PAREN
-    RIGHT_PAREN
+  | "(" PAR
+      "(" l=tyvar* ")"
+      "(" tup=fun_def_mono body=term ")"
+    ")"
     {
       let f, args, ret = tup in
       Ast.mk_fun_rec ~ty_vars:l f args ret body
     }
 
 funs_rec_decl:
-  | LEFT_PAREN tup=fun_def_mono RIGHT_PAREN
+  | "(" tup=fun_def_mono ")"
     {
       let f, args, ret = tup in
       Ast.mk_fun_decl ~ty_vars:[] f args ret
     }
-  | LEFT_PAREN
-      PAR
-      LEFT_PAREN l=tyvar* RIGHT_PAREN
-      LEFT_PAREN tup=fun_def_mono RIGHT_PAREN
-    RIGHT_PAREN
+  | "(" PAR
+      "(" l=tyvar* ")"
+      "(" tup=fun_def_mono ")"
+    ")"
     {
       let f, args, ret = tup in
       Ast.mk_fun_decl ~ty_vars:l f args ret
     }
 
 par_term:
-  | LEFT_PAREN
-      PAR LEFT_PAREN tyvars=tyvar+ RIGHT_PAREN t=term
-    RIGHT_PAREN
+  | "(" PAR "(" tyvars=tyvar+ ")" t=term ")"
   { tyvars, t }
   | t=term
   { [], t }
@@ -194,7 +187,7 @@ anystr:
 
 prop_lit:
   | s=var { s, true }
-  | LEFT_PAREN not_=IDENT s=var RIGHT_PAREN {
+  | "(" not_=IDENT s=var ")" {
     if not_ = "not" then s, false
     else
       let loc = Loc.mk_pos $startpos $endpos in
@@ -202,74 +195,70 @@ prop_lit:
     }
 
 stmt:
-  | LEFT_PAREN ASSERT t=term RIGHT_PAREN
+  | "(" ASSERT t=term ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.assert_ ~loc t
     }
-  | LEFT_PAREN DECLARE_SORT td=ty_decl RIGHT_PAREN
+  | "(" DECLARE_SORT td=ty_decl ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       let s, n = td in
       Ast.decl_sort ~loc s ~arity:n
     }
-  | LEFT_PAREN DATA
-      LEFT_PAREN tys=ty_decl_paren+ RIGHT_PAREN
-      LEFT_PAREN l=cstors+ RIGHT_PAREN
-    RIGHT_PAREN
+  | "(" DATA
+      "(" tys=ty_decl_paren+ ")"
+      "(" l=cstors+ ")"
+    ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.data_zip ~loc tys l
     }
-  | LEFT_PAREN DECLARE_FUN tup=fun_decl RIGHT_PAREN
+  | "(" DECLARE_FUN tup=fun_decl ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       let tyvars, f, args, ret = tup in
       Ast.decl_fun ~loc ~tyvars f args ret
     }
-  | LEFT_PAREN DECLARE_CONST f=IDENT ty=ty RIGHT_PAREN
+  | "(" DECLARE_CONST f=IDENT ty=ty ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.decl_fun ~loc ~tyvars:[] f [] ty
     }
-  | LEFT_PAREN DEFINE_FUN f=fun_rec RIGHT_PAREN
+  | "(" DEFINE_FUN f=fun_rec ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.fun_def ~loc f
     }
-  | LEFT_PAREN
-    DEFINE_FUN_REC
-    f=fun_rec
-    RIGHT_PAREN
+  | "(" DEFINE_FUN_REC f=fun_rec ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.fun_rec ~loc f
     }
-  | LEFT_PAREN
-    DEFINE_FUNS_REC
-      LEFT_PAREN decls=funs_rec_decl+ RIGHT_PAREN
-      LEFT_PAREN bodies=term+ RIGHT_PAREN
-    RIGHT_PAREN
+  | "(" DEFINE_FUNS_REC
+      "(" decls=funs_rec_decl+ ")"
+      "(" bodies=term+ ")"
+    ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.funs_rec ~loc decls bodies
     }
-  | LEFT_PAREN CHECK_SAT RIGHT_PAREN
+  | "(" CHECK_SAT ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.check_sat ~loc ()
     }
-  | LEFT_PAREN CHECK_SAT_ASSUMING LEFT_PAREN l=prop_lit* RIGHT_PAREN RIGHT_PAREN
+  | "(" CHECK_SAT_ASSUMING "(" l=prop_lit* ")" ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.check_sat_assuming ~loc l
     }
-  | LEFT_PAREN GET_VALUE l=term+ RIGHT_PAREN
+  | "(" GET_VALUE l=term+ ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       Ast.get_value ~loc l
     }
-  | LEFT_PAREN s=IDENT args=anystr* RIGHT_PAREN
+  | "(" s=IDENT args=anystr* ")"
     {
       let loc = Loc.mk_pos $startpos $endpos in
       match s, args with
@@ -303,7 +292,7 @@ stmt:
     }
 
 var:
-  | WILDCARD { "_" }
+  | "_" { "_" }
   | s=IDENT { s }
 tyvar:
   | s=IDENT { s }
@@ -316,9 +305,9 @@ ty:
       | _ -> Ast.ty_const s
     end
     }
-  | LEFT_PAREN s=IDENT args=ty+ RIGHT_PAREN
+  | "(" s=IDENT args=ty+ ")"
     { Ast.ty_app s args }
-  | LEFT_PAREN ARROW tup=ty_arrow_args RIGHT_PAREN
+  | "(" "=>" tup=ty_arrow_args ")"
     {
       let args, ret = tup in
       Ast.ty_arrow_l args ret }
@@ -328,26 +317,18 @@ ty_arrow_args:
   | a=ty tup=ty_arrow_args { a :: fst tup, snd tup }
 
 typed_var:
-  | LEFT_PAREN s=var ty=ty RIGHT_PAREN { s, ty }
+  | "(" s=var ty=ty ")" { s, ty }
 
 case:
-  | LEFT_PAREN
-      c=IDENT
-      rhs=term
-    RIGHT_PAREN
+  | "(" c=IDENT rhs=term ")"
     { Ast.Match_case (c, [], rhs) }
-  | LEFT_PAREN
-      LEFT_PAREN c=IDENT vars=var+ RIGHT_PAREN
-      rhs=term
-    RIGHT_PAREN
+  | "(" "(" c=IDENT vars=var+ ")" rhs=term ")"
     { Ast.Match_case (c, vars, rhs) }
-  | LEFT_PAREN
-     WILDCARD rhs=term
-    RIGHT_PAREN
+  | "(" "_" rhs=term ")"
     { Ast.Match_default rhs }
 
 binding:
-  | LEFT_PAREN v=var t=term RIGHT_PAREN { v, t }
+  | "(" v=var t=term ")" { v, t }
 
 term:
   | s=QUOTED { Ast.const s }
@@ -366,51 +347,30 @@ attr:
   | a=IDENT b=anystr { a,b }
 
 composite_term:
-  | LEFT_PAREN t=term RIGHT_PAREN { t }
-  | LEFT_PAREN IF a=term b=term c=term RIGHT_PAREN { Ast.if_ a b c }
-  | LEFT_PAREN DISTINCT l=term+ RIGHT_PAREN { Ast.distinct l }
-  | LEFT_PAREN EQ a=term b=term RIGHT_PAREN { Ast.eq a b }
-  | LEFT_PAREN ARROW a=term b=term RIGHT_PAREN { Ast.imply a b }
-  | LEFT_PAREN f=IDENT args=term+ RIGHT_PAREN {
+  | "(" t=term ")" { t }
+  | "(" IF a=term b=term c=term ")" { Ast.if_ a b c }
+  | "(" DISTINCT l=term+ ")" { Ast.distinct l }
+  | "(" "=" a=term b=term ")" { Ast.eq a b }
+  | "(" "=>" a=term b=term ")" { Ast.imply a b }
+  | "(" f=IDENT args=term+ ")" {
     let loc = Loc.mk_pos $startpos $endpos in
     apply_const ~loc f args }
-  | LEFT_PAREN f=composite_term args=term+ RIGHT_PAREN { Ast.ho_app_l f args }
-  | LEFT_PAREN AT f=term arg=term RIGHT_PAREN { Ast.ho_app f arg }
-  | LEFT_PAREN BANG t=term attrs=attr+ RIGHT_PAREN { Ast.attr t attrs }
-  | LEFT_PAREN
-      MATCH
-      lhs=term
-        LEFT_PAREN
-        l=case+
-        RIGHT_PAREN
-    RIGHT_PAREN
+  | "(" f=composite_term args=term+ ")" { Ast.ho_app_l f args }
+  | "(" "@" f=term arg=term ")" { Ast.ho_app f arg }
+  | "(" "!" t=term attrs=attr+ ")" { Ast.attr t attrs }
+  | "(" MATCH lhs=term "(" l=case+ ")" ")"
     { Ast.match_ lhs l }
-  | LEFT_PAREN
-      FUN
-      LEFT_PAREN vars=typed_var+ RIGHT_PAREN
-      body=term
-    RIGHT_PAREN
+  | "(" FUN "(" vars=typed_var+ ")" body=term ")"
     { Ast.fun_l vars body }
-  | LEFT_PAREN
-      LEFT_PAREN WILDCARD IS c=IDENT RIGHT_PAREN
-      t=term
-    RIGHT_PAREN
+  | "(" "(" "_" IS c=IDENT ")" t=term ")"
     { Ast.is_a c t }
-  | LEFT_PAREN
-      LET
-      LEFT_PAREN l=binding+ RIGHT_PAREN
-      r=term
-    RIGHT_PAREN
+  | "(" LET "(" l=binding+ ")" r=term ")"
     { Ast.let_ l r }
-  | LEFT_PAREN AS t=term ty=ty RIGHT_PAREN
+  | "(" AS t=term ty=ty ")"
     { Ast.cast t ~ty }
-  | LEFT_PAREN FORALL LEFT_PAREN vars=typed_var+ RIGHT_PAREN
-    f=term
-    RIGHT_PAREN
+  | "(" FORALL "(" vars=typed_var+ ")" f=term ")"
     { Ast.forall vars f }
-  | LEFT_PAREN EXISTS LEFT_PAREN vars=typed_var+ RIGHT_PAREN
-    f=term
-    RIGHT_PAREN
+  | "(" EXISTS "(" vars=typed_var+ ")" f=term ")"
     { Ast.exists vars f }
 
 %%
